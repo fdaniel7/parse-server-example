@@ -45,9 +45,9 @@ app.get('/test', function(req, res) {
   res.sendFile(path.join(__dirname, '/public/test.html'));
 });
 
-app.get('/webhookQ', function(req, res) {
+app.get('/webhook', function(req, res) {
   if (req.query['hub.mode'] === 'subscribe' &&
-      req.query['hub.verify_token'] === 'ABCDDD') {
+      req.query['hub.verify_token'] === process.env.MASTER_KEY) {
     console.log("Validating webhook");
     res.status(200).send(req.query['hub.challenge']);
   } else {
@@ -56,6 +56,40 @@ app.get('/webhookQ', function(req, res) {
   }  
 });
 
+app.post('/webhook', function (req, res) {
+  var data = req.body;
+
+  // Make sure this is a page subscription
+  if (data.object == 'page') {
+    // Iterate over each entry
+    // There may be multiple if batched
+    data.entry.forEach(function(pageEntry) {
+      var pageID = pageEntry.id;
+      var timeOfEvent = pageEntry.time;
+
+      // Iterate over each messaging event
+      pageEntry.messaging.forEach(function(messagingEvent) {
+        if (messagingEvent.optin) {
+          receivedAuthentication(messagingEvent);
+        } else if (messagingEvent.message) {
+          receivedMessage(messagingEvent);
+        } else if (messagingEvent.delivery) {
+          receivedDeliveryConfirmation(messagingEvent);
+        } else if (messagingEvent.postback) {
+          receivedPostback(messagingEvent);
+        } else {
+          console.log("Webhook received unknown messagingEvent: ", messagingEvent);
+        }
+      });
+    });
+
+    // Assume all went well.
+    //
+    // You must send back a 200, within 20 seconds, to let us know you've 
+    // successfully received the callback. Otherwise, the request will time out.
+    res.sendStatus(200);
+  }
+});
 
 
 var port = process.env.PORT || 1337;
