@@ -58,7 +58,7 @@ app.get('/webhook', function(req, res) {
 
 // When I receive message from the facebook page
 app.post('/webhook', function (req, res) {
-  ////////////////////////////////////////////////////////Parse.Cloud.run('hello');
+  Parse.Cloud.run('hello');
   var data = req.body;
 
   // Make sure this is a page subscription
