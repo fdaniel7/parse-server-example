@@ -56,44 +56,41 @@ app.get('/webhook', function(req, res) {
   }  
 });
 
-// When I receive message from the facebook page
-app.post('/webhook', function (req, res) {
-  //Parse.Cloud.run('hello');
-  var data = req.body;
 
-  // Make sure this is a page subscription
-  if (data.object == 'page') {
-    // Iterate over each entry
-    // There may be multiple if batched
-    data.entry.forEach(function(pageEntry) {
-      var pageID = pageEntry.id;
-      var timeOfEvent = pageEntry.time;
+function callSendAPI(messageData) {
+  request({
+    uri: 'https://graph.facebook.com/v2.6/me/messages',
+    qs: { access_token: FACEBOOK_PAGE_ACCESS_TOKEN },
+    method: 'POST',
+    json: messageData
 
-      // Iterate over each messaging event
-      pageEntry.messaging.forEach(function(messagingEvent) {
-        if (messagingEvent.optin) {
-          receivedAuthentication(messagingEvent);
-        } else if (messagingEvent.message) {
-          receivedMessage(messagingEvent);
-        } else if (messagingEvent.delivery) {
-          receivedDeliveryConfirmation(messagingEvent);
-        } else if (messagingEvent.postback) {
-          receivedPostback(messagingEvent);
-        } else {
-          console.log("Webhook received unknown messagingEvent: ", messagingEvent);
-        }
-      });
-    });
+  }, function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+      var recipientId = body.recipient_id;
+      var messageId = body.message_id;
 
-    // Assume all went well.
-    //
-    // You must send back a 200, within 20 seconds, to let us know you've 
-    // successfully received the callback. Otherwise, the request will time out.
-    res.sendStatus(200);
-  }
-});
+      console.log("Successfully sent generic message with id %s to recipient %s", 
+        messageId, recipientId);
+    } else {
+      console.error("Unable to send message.");
+      console.error(response);
+      console.error(error);
+    }
+  });  
+}
 
+function sendTextMessage(recipientId, messageText) {
+  var messageData = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      text: messageText
+    }
+  };
 
+  callSendAPI(messageData);
+}
 
 
 function receivedMessage(event) {
@@ -143,43 +140,43 @@ function receivedMessage(event) {
 }
 
 
+// When I receive message from the facebook page
+app.post('/webhook', function (req, res) {
+  //Parse.Cloud.run('hello');
+  var data = req.body;
 
-function sendTextMessage(recipientId, messageText) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      text: messageText
-    }
-  };
+  // Make sure this is a page subscription
+  if (data.object == 'page') {
+    // Iterate over each entry
+    // There may be multiple if batched
+    data.entry.forEach(function(pageEntry) {
+      var pageID = pageEntry.id;
+      var timeOfEvent = pageEntry.time;
 
-  callSendAPI(messageData);
-}
+      // Iterate over each messaging event
+      pageEntry.messaging.forEach(function(messagingEvent) {
+        if (messagingEvent.optin) {
+          receivedAuthentication(messagingEvent);
+        } else if (messagingEvent.message) {
+          receivedMessage(messagingEvent);
+        } else if (messagingEvent.delivery) {
+          receivedDeliveryConfirmation(messagingEvent);
+        } else if (messagingEvent.postback) {
+          receivedPostback(messagingEvent);
+        } else {
+          console.log("Webhook received unknown messagingEvent: ", messagingEvent);
+        }
+      });
+    });
 
+    // Assume all went well.
+    //
+    // You must send back a 200, within 20 seconds, to let us know you've 
+    // successfully received the callback. Otherwise, the request will time out.
+    res.sendStatus(200);
+  }
+});
 
-
-function callSendAPI(messageData) {
-  request({
-    uri: 'https://graph.facebook.com/v2.6/me/messages',
-    qs: { access_token: FACEBOOK_PAGE_ACCESS_TOKEN },
-    method: 'POST',
-    json: messageData
-
-  }, function (error, response, body) {
-    if (!error && response.statusCode == 200) {
-      var recipientId = body.recipient_id;
-      var messageId = body.message_id;
-
-      console.log("Successfully sent generic message with id %s to recipient %s", 
-        messageId, recipientId);
-    } else {
-      console.error("Unable to send message.");
-      console.error(response);
-      console.error(error);
-    }
-  });  
-}
 
 var port = process.env.PORT || 1337;
 var httpServer = require('http').createServer(app);
