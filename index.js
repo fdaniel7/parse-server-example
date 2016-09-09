@@ -56,7 +56,9 @@ app.get('/webhook', function(req, res) {
   }  
 });
 
+// When I receive message from the facebook page
 app.post('/webhook', function (req, res) {
+  Parse.Cloud.run('hello');
   var data = req.body;
 
   // Make sure this is a page subscription
@@ -179,7 +181,7 @@ function callSendAPI(messageData) {
   });  
 }
 
-
+function addDataToMyParse
 var port = process.env.PORT || 1337;
 var httpServer = require('http').createServer(app);
 httpServer.listen(port, function() {
